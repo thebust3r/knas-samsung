@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>KNAS 42</title>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#070a24;color:#eef2ff;font-family:"SamsungOne","Samsung Sans",Arial,sans-serif;overflow:hidden}
+body{background:radial-gradient(1200px 700px at 50% 0%,#1f2c86,transparent 70%),#070a24}
+.box{position:absolute;left:50%;top:50%;width:1100px;margin-left:-550px;transform:translateY(-50%);text-align:center}
+.logo{display:inline-block;background:#e3261b;color:#fff;font:italic 800 46px Arial,sans-serif;letter-spacing:4px;padding:6px 26px;border-radius:6px}
+h1{font:italic 800 96px Arial,sans-serif;color:#ffd23a;margin:24px 0 10px;text-shadow:5px 5px 0 #000}
+p{font-size:36px;color:#cfd8ff;margin:12px 0;line-height:1.3}
+input{width:760px;font-size:52px;padding:18px 24px;border-radius:12px;border:4px solid #9cb8ff;background:#0d1550;color:#fff;text-align:center;outline:none}
+input:focus{border-color:#ffd23a}
+.hint{font-size:30px;color:#a3b0dd;margin-top:28px}
+.err{color:#ff8a80;font-size:32px;min-height:40px;margin-top:14px}
+b{color:#ffd23a}
+.red{display:inline-block;width:28px;height:28px;border-radius:50%;background:#e3261b;vertical-align:middle;margin:0 6px}
+#ask{display:none}
+</style>
+</head>
+<body>
+<div class="box" id="start">
+  <div class="logo">KNAS 42</div>
+  <h1>Tuning in…</h1>
+  <p id="where"></p>
+  <p class="hint">Press the <span class="red"></span> red (A) button to change the address</p>
+</div>
+<div class="box" id="ask">
+  <div class="logo">KNAS 42</div>
+  <h1>Where's KNAS?</h1>
+  <p>Type your NAS's address, like <b>192.168.1.50</b></p>
+  <p><input id="addr" type="text" autocomplete="off" placeholder="192.168.1.50"></p>
+  <div class="err" id="err"></div>
+  <p class="hint">Press <b>OK</b> on the keyboard (or the remote) when you're done</p>
+</div>
+<script>
+"use strict";
+var KEY = "knas_url", PORT = 8642, timer = 0;
+
+/* Hand the remote's extra buttons to KNAS (channel up/down, numbers, guide, info, color buttons...) */
+(function () {
+  if (!window.tizen || !tizen.tvinputdevice) return;
+  var keys = ["ChannelUp", "ChannelDown", "ChannelList", "PreviousChannel", "Info", "Guide", "Minus",
+              "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+              "ColorF0Red", "ColorF1Green", "ColorF2Yellow", "ColorF3Blue",
+              "MediaPlayPause", "MediaPlay", "MediaPause", "MediaStop", "MediaFastForward", "MediaRewind"];
+  for (var i = 0; i < keys.length; i++) { try { tizen.tvinputdevice.registerKey(keys[i]); } catch (e) {} }
+})();
+
+/* "192.168.1.50", "192.168.1.50:8642" or "http://nas:8642/tv" -> http://192.168.1.50:8642/tv */
+function normalize(t) {
+  t = String(t || "").replace(/\s+/g, "");
+  if (!t) return null;
+  if (!/^https?:\/\//i.test(t)) t = "http://" + t;
+  var m = /^(https?):\/\/([^\/:?#]+)(?::(\d+))?(\/[^?#]*)?(\?[^#]*)?/i.exec(t);
+  if (!m || !m[2]) return null;
+  var path = (!m[4] || m[4] === "/") ? "/tv" : m[4];
+  return m[1].toLowerCase() + "://" + m[2] + ":" + (m[3] || PORT) + path + (m[5] || "");
+}
+function saved() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+function hostOf(u) { var m = /^https?:\/\/([^\/]+)/.exec(u || ""); return m ? m[1] : ""; }
+
+function go(url) { location.replace(url); }
+
+function ask(msg) {
+  clearTimeout(timer);
+  document.getElementById("start").style.display = "none";
+  document.getElementById("ask").style.display = "block";
+  var box = document.getElementById("addr"), cur = saved();
+  if (cur && !box.value) box.value = hostOf(cur).replace(":" + PORT, "");
+  document.getElementById("err").textContent = msg || "";
+  setTimeout(function () { box.focus(); }, 50);
+}
+
+function useTyped() {
+  var url = normalize(document.getElementById("addr").value);
+  if (!url) { document.getElementById("err").textContent = "Type an address like 192.168.1.50"; return; }
+  try { localStorage.setItem(KEY, url); } catch (e) {}
+  document.getElementById("ask").style.display = "none";
+  document.getElementById("start").style.display = "block";
+  document.getElementById("where").textContent = hostOf(url);
+  timer = setTimeout(function () { go(url); }, 300);
+}
+
+document.addEventListener("keydown", function (e) {
+  var c = e.keyCode;
+  if (document.getElementById("ask").style.display === "block") {
+    if (c === 13 || c === 65376) { e.preventDefault(); useTyped(); }        /* OK / Done on the on-screen keyboard */
+    else if (c === 10009 && saved()) { e.preventDefault(); go(saved()); } /* Back: keep the old address */
+    return;
+  }
+  if (c === 403 || c === 37) { e.preventDefault(); ask(); }                 /* red (A) button, or left */
+});
+
+/* Start: straight to KNAS if we know where it is (a moment to press red first), otherwise ask */
+(function () {
+  var url = saved();
+  if (!url) { ask(); return; }
+  document.getElementById("where").textContent = hostOf(url);
+  timer = setTimeout(function () { go(url); }, 1800);
+})();
+</script>
+</body>
+</html>
