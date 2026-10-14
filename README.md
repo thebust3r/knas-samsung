@@ -9,5 +9,8 @@ The [KNAS 42](https://github.com/thebust3r/KNAS42) cable box on a Samsung (Tizen
 
 To change the address later, press the red **A** button while it says "Tuning in…".
 
+## Install from a file (TizenBrew Installer, Device Manager)
+Download **KNAS42.wgt** from the [Releases page](../../releases/latest) and install it with TizenBrew Installer (install from a file), Tizen Studio's Device Manager, or `tizen install -n KNAS42.wgt`. The TV needs Developer Mode on.
+
 ## Install with Tizen Studio
 Import this folder as a Tizen project (File → Import → Tizen → Tizen Project), then right-click it → Run As → Tizen Web Application.

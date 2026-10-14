@@ -1,0 +1,71 @@
+# Builds the installable Samsung TV app (KNAS42.wgt), signed so a TV in Developer Mode accepts it,
+# and puts it on this repo's Releases page. Uses tizen.js (by the TizenBrew author), so no Tizen Studio needed.
+# Install it with TizenBrew Installer (Install from file), Tizen Studio's Device Manager, or `tizen install`.
+name: Build TV app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  wgt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Get the signing tool (tizen.js)
+        run: |
+          git clone --depth 1 https://github.com/reisxd/tizen.js "$RUNNER_TEMP/tizenjs"
+          cd "$RUNNER_TEMP/tizenjs" && npm install --silent
+
+      - name: Author certificate (made once, then kept so updates install over the old app)
+        id: cert
+        run: |
+          if [ ! -f signing/author.p12 ]; then
+            mkdir -p signing
+            node "$RUNNER_TEMP/tizenjs/cli.js" create-tizen-cert --name "KNAS 42" --password knas42author --privilege public --output signing/author.p12
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+          ls -la signing
+
+      - name: Build and sign KNAS42.wgt
+        id: build
+        run: |
+          version="$(sed -n 's/.*<widget[^>]* version="\([^"]*\)".*/\1/p' config.xml | head -n1)"
+          echo "version=${version:-1.0.0}" >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/app" out
+          cp config.xml index.html icon.png "$RUNNER_TEMP/app/"
+          cd "$RUNNER_TEMP/app"
+          node "$RUNNER_TEMP/tizenjs/cli.js" build . -t wgt -o "$GITHUB_WORKSPACE/out/KNAS42.wgt" \
+            --author "$GITHUB_WORKSPACE/signing/author.p12" --authorPwd knas42author -p public
+          cd "$GITHUB_WORKSPACE" && unzip -l out/KNAS42.wgt
+
+      - name: Keep the new author certificate in the repo
+        if: steps.cert.outputs.new == 'true'
+        run: |
+          git config user.name "thebust3r"
+          git config user.email "thebust3r@users.noreply.github.com"
+          git add signing/author.p12
+          git commit -m "Keep the app's author certificate (so updates install over the old app)"
+          git push
+
+      - name: Put it on the Releases page
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="v${{ steps.build.outputs.version }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" out/KNAS42.wgt --clobber
+          else
+            gh release create "$tag" out/KNAS42.wgt --target "$GITHUB_SHA" --title "KNAS 42 TV app ${{ steps.build.outputs.version }}" \
+              --notes "Download **KNAS42.wgt** below and install it with TizenBrew Installer (install from a file), Tizen Studio's Device Manager, or \`tizen install -n KNAS42.wgt\`. Your TV needs Developer Mode on. TizenBrew users can also just add the GitHub module \`thebust3r/knas-samsung\`."
+          fi
