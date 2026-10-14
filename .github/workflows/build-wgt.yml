@@ -47,7 +47,7 @@ jobs:
           version="$(sed -n 's/.*<widget[^>]* version="\([^"]*\)".*/\1/p' config.xml | head -n1)"
           echo "version=${version:-1.0.0}" >> "$GITHUB_OUTPUT"
           mkdir -p "$RUNNER_TEMP/app" out
-          cp config.xml index.html icon.png "$RUNNER_TEMP/app/"
+          cp config.xml index.html app.js style.css icon.png "$RUNNER_TEMP/app/"
           cd "$RUNNER_TEMP/app"
           node "$RUNNER_TEMP/tizenjs/cli.js" build . -t wgt -o "$GITHUB_WORKSPACE/out/KNAS42.wgt" \
             --author "$GITHUB_WORKSPACE/signing/author.p12" --authorPwd knas42author -p public
