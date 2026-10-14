@@ -2,39 +2,39 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1920, height=1080">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KNAS 42</title>
 <style>
-html,body{margin:0;width:100%;height:100%;background:#070a24;color:#eef2ff;font-family:"SamsungOne","Samsung Sans",Arial,sans-serif;overflow:hidden}
-body{background:radial-gradient(1200px 700px at 50% 0%,#1f2c86,transparent 70%),#070a24}
-.box{position:absolute;left:50%;top:50%;width:1100px;margin-left:-550px;transform:translateY(-50%);text-align:center}
-.logo{display:inline-block;background:#e3261b;color:#fff;font:italic 800 46px Arial,sans-serif;letter-spacing:4px;padding:6px 26px;border-radius:6px}
-h1{font:italic 800 96px Arial,sans-serif;color:#ffd23a;margin:24px 0 10px;text-shadow:5px 5px 0 #000}
-p{font-size:36px;color:#cfd8ff;margin:12px 0;line-height:1.3}
-input{width:760px;font-size:52px;padding:18px 24px;border-radius:12px;border:4px solid #9cb8ff;background:#0d1550;color:#fff;text-align:center;outline:none}
+/* Sized to the TV's real window (vw/vh), centered with a plain table layout so older Samsung TVs draw it right */
+html,body{margin:0;padding:0;width:100%;height:100%;background-color:#070a24;color:#eef2ff;font-family:Arial,Helvetica,sans-serif;overflow:hidden}
+.screen{display:table;width:100%;height:100%;background-color:#070a24}
+.cell{display:table-cell;vertical-align:middle;text-align:center;padding:0 6vw}
+.logo{display:inline-block;background-color:#e3261b;color:#ffffff;font-weight:bold;font-style:italic;font-size:3vw;letter-spacing:0.3vw;padding:0.5vw 2vw;border-radius:0.5vw}
+h1{font-weight:bold;font-style:italic;font-size:6.5vw;color:#ffd23a;margin:2vw 0 1vw;text-shadow:0.35vw 0.35vw 0 #000000}
+p{font-size:2.4vw;color:#cfd8ff;margin:1vw 0;line-height:1.3}
+input{width:50vw;font-size:3.6vw;padding:1vw 1.5vw;border-radius:0.8vw;border:0.3vw solid #9cb8ff;background-color:#0d1550;color:#ffffff;text-align:center;outline:none;box-sizing:border-box}
 input:focus{border-color:#ffd23a}
-.hint{font-size:30px;color:#a3b0dd;margin-top:28px}
-.err{color:#ff8a80;font-size:32px;min-height:40px;margin-top:14px}
+.hint{font-size:2vw;color:#a3b0dd;margin-top:2vw}
+.err{color:#ff8a80;font-size:2.2vw;min-height:3vw;margin-top:1vw}
 b{color:#ffd23a}
-.red{display:inline-block;width:28px;height:28px;border-radius:50%;background:#e3261b;vertical-align:middle;margin:0 6px}
-#ask{display:none}
+.red{display:inline-block;width:1.8vw;height:1.8vw;border-radius:50%;background-color:#e3261b;vertical-align:middle;margin:0 0.4vw}
 </style>
 </head>
-<body>
-<div class="box" id="start">
+<body style="background-color:#070a24;color:#eef2ff">
+<div class="screen" id="start" style="background-color:#070a24"><div class="cell">
   <div class="logo">KNAS 42</div>
-  <h1>Tuning in…</h1>
-  <p id="where"></p>
-  <p class="hint">Press the <span class="red"></span> red (A) button to change the address</p>
-</div>
-<div class="box" id="ask">
+  <h1 style="color:#ffd23a">Tuning in…</h1>
+  <p id="where" style="color:#cfd8ff"></p>
+  <p class="hint" style="color:#a3b0dd">Press the <span class="red"></span> red (A) button to change the address</p>
+</div></div>
+<div class="screen" id="ask" style="display:none;background-color:#070a24"><div class="cell">
   <div class="logo">KNAS 42</div>
-  <h1>Where's KNAS?</h1>
-  <p>Type your NAS's address, like <b>192.168.1.50</b></p>
+  <h1 style="color:#ffd23a">Where's KNAS?</h1>
+  <p style="color:#cfd8ff">Type your NAS's address, like <b>192.168.1.50</b></p>
   <p><input id="addr" type="text" autocomplete="off" placeholder="192.168.1.50"></p>
   <div class="err" id="err"></div>
-  <p class="hint">Press <b>OK</b> on the keyboard (or the remote) when you're done</p>
-</div>
+  <p class="hint" style="color:#a3b0dd">Press <b>Done</b> on the keyboard (or OK on the remote) when you're done</p>
+</div></div>
 <script>
 "use strict";
 var KEY = "knas_url", PORT = 8642, timer = 0;
@@ -67,7 +67,7 @@ function go(url) { location.replace(url); }
 function ask(msg) {
   clearTimeout(timer);
   document.getElementById("start").style.display = "none";
-  document.getElementById("ask").style.display = "block";
+  document.getElementById("ask").style.display = "table";
   var box = document.getElementById("addr"), cur = saved();
   if (cur && !box.value) box.value = hostOf(cur).replace(":" + PORT, "");
   document.getElementById("err").textContent = msg || "";
@@ -79,14 +79,14 @@ function useTyped() {
   if (!url) { document.getElementById("err").textContent = "Type an address like 192.168.1.50"; return; }
   try { localStorage.setItem(KEY, url); } catch (e) {}
   document.getElementById("ask").style.display = "none";
-  document.getElementById("start").style.display = "block";
+  document.getElementById("start").style.display = "table";
   document.getElementById("where").textContent = hostOf(url);
   timer = setTimeout(function () { go(url); }, 300);
 }
 
 document.addEventListener("keydown", function (e) {
   var c = e.keyCode;
-  if (document.getElementById("ask").style.display === "block") {
+  if (document.getElementById("ask").style.display === "table") {
     if (c === 13 || c === 65376) { e.preventDefault(); useTyped(); }        /* OK / Done on the on-screen keyboard */
     else if (c === 10009 && saved()) { e.preventDefault(); go(saved()); } /* Back: keep the old address */
     return;
