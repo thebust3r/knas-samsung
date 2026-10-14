@@ -38,6 +38,12 @@ b{color:#ffd23a}
   <p class="hint" style="color:#a3b0dd" id="askHint"></p>
 </div></div>
 <script>
+window.onerror = function (msg, src, line) {
+  try { var e = document.getElementById("err") || document.body; document.getElementById("ask").style.display = "table";
+        document.getElementById("start").style.display = "none"; e.textContent = "Something went wrong: " + msg + " (line " + line + ")"; } catch (x) {}
+};
+</script>
+<script>
 "use strict";
 var KEY = "knas_url", PORT = 8642, timer = 0, mode = "", typed = "", scanId = 0;
 
@@ -65,17 +71,16 @@ function useIp(ip) {
   timer = setTimeout(function () { location.replace(url); }, 400);
 }
 
-/* Is KNAS answering at this address? (any reply on port 8642 counts) */
+/* Is KNAS at this address? Only counts if KNAS's own remote icon loads from it as a real picture,
+   so a router or anything else on port 8642 can't fool it. */
 function probe(ip, ms) {
   return new Promise(function (resolve) {
-    var done = false, t = setTimeout(function () { if (!done) { done = true; resolve(false); } }, ms);
-    function fin(ok) { if (!done) { done = true; clearTimeout(t); resolve(ok); } }
-    var u = "http://" + ip + ":" + PORT + "/api/version?probe=" + Date.now();
-    if (window.fetch) {
-      fetch(u, { mode: "no-cors", cache: "no-store" }).then(function () { fin(true); }, function () { fin(false); });
-    } else {
-      try { var x = new XMLHttpRequest(); x.open("GET", u, true); x.onload = function () { fin(true); }; x.onerror = function () { fin(false); }; x.send(); } catch (e) { fin(false); }
-    }
+    var done = false, img = new Image();
+    var t = setTimeout(function () { fin(false); }, ms);
+    function fin(ok) { if (done) return; done = true; clearTimeout(t); img.onload = img.onerror = null; try { img.src = ""; } catch (e) {} resolve(ok); }
+    img.onload = function () { fin(img.width > 8 && img.height > 8); };
+    img.onerror = function () { fin(false); };
+    img.src = "http://" + ip + ":" + PORT + "/remote-icon-192.png?probe=" + Date.now();
   });
 }
 
@@ -176,8 +181,13 @@ document.addEventListener("keydown", function (e) {
 (function () {
   var url = saved();
   if (!url) { scan(); return; }
-  $("where").textContent = hostOf(url);
-  timer = setTimeout(function () { location.replace(url); }, 1800);
+  var ip = hostOf(url), t0 = Date.now();
+  $("where").textContent = ip;
+  probe(ip, 5000).then(function (ok) {
+    if (mode) return;                                  /* they pressed OK/red to change it */
+    if (!ok) { typed = ip; typeIt(); $("err").textContent = "Couldn't reach KNAS at " + ip + ". Fix the address, or press red to search."; return; }
+    timer = setTimeout(function () { location.replace(url); }, Math.max(0, 1500 - (Date.now() - t0)));
+  });
 })();
 </script>
 </body>
