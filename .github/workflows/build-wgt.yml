@@ -26,6 +26,10 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/reisxd/tizen.js "$RUNNER_TEMP/tizenjs"
           cd "$RUNNER_TEMP/tizenjs" && npm install --silent
+          # tizen.js bug: it packs the issuing CA's private key into the new author certificate instead of the
+          # author's own key, so the TV says "Invalid signature. Signed with wrong key". Use the author's key.
+          sed -i 's/toPkcs12Asn1(developerPrivateKey,/toPkcs12Asn1(key.privateKey,/' src/tizenCertificateCreator.js
+          grep -n "toPkcs12Asn1(" src/tizenCertificateCreator.js
 
       - name: Author certificate (made once, then kept so updates install over the old app)
         id: cert
@@ -48,6 +52,11 @@ jobs:
           node "$RUNNER_TEMP/tizenjs/cli.js" build . -t wgt -o "$GITHUB_WORKSPACE/out/KNAS42.wgt" \
             --author "$GITHUB_WORKSPACE/signing/author.p12" --authorPwd knas42author -p public
           cd "$GITHUB_WORKSPACE" && unzip -l out/KNAS42.wgt
+
+      - name: Check the signatures like the TV will
+        run: |
+          pip install --quiet lxml cryptography
+          python3 verify_signature.py out/KNAS42.wgt
 
       - name: Keep the new author certificate in the repo
         if: steps.cert.outputs.new == 'true'
